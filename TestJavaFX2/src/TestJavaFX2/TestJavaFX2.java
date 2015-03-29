@@ -5,8 +5,13 @@ import javafx.animation.PathTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -24,6 +29,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.CubicCurveTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
@@ -34,6 +40,19 @@ import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.awt.Dimension;
+//import java.awt.Image;
+import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+//import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
+
+import javax.imageio.ImageIO;
+
+import com.github.sarxos.webcam.Webcam;
+
 public class TestJavaFX2 extends Application {
 
  public static void main(String[] args) {
@@ -42,61 +61,98 @@ public class TestJavaFX2 extends Application {
 
  private HBox taskbar;
  private StackPane view;
+ private BufferedImage grabbedImage;
+ private Webcam webcam; 
+ private ObjectProperty<Image> imageProperty = new SimpleObjectProperty<Image>();
+ private ImageView imageView;
+ private boolean stopCamera = false;
+
 // private MediaPlayer mediaPlayer;
 
  @Override
  public void start(Stage stage) {
     
-     stage.setTitle("Java FX Demo");
+     stage.setTitle("OCR Test");
+     stage.setWidth(800);
+     stage.setHeight(900);
 
      BorderPane root = new BorderPane();
      Scene scene = new Scene(root, 720, 550, Color.LIGHTGRAY);
      stage.setScene(scene);
 
      taskbar = new HBox(10);
-     taskbar.setPadding(new Insets(10, 30, 50, 30));
+     taskbar.setPadding(new Insets(15, 30, 50, 30));
      taskbar.setPrefHeight(150);
      taskbar.setAlignment(Pos.CENTER);
      root.setBottom(taskbar);
      view = new StackPane();
      root.setCenter(view);
-     view.getChildren().add(new Text("Hello from JavaFX..."));
+     view.getChildren().add(new Text("Test OCR"));
+		webcam = Webcam.getDefault();
      
-//     mediaPlayer = new MediaPlayer(new Media("file:///c:/10.mp4"));
      taskbar.getChildren().add(createButton("/icon-1.png", new Runnable() {
-             public void run() {
-//                 changeView(new MediaView(mediaPlayer));
-//                 mediaPlayer.play();
+         	 public void run() {
                  view.getChildren().clear(); // очищаем view
-                 
-                 final Rectangle rect1 = new Rectangle(0, 0, 100, 100);
-                 rect1.setArcHeight(20);
-                 rect1.setArcWidth(20);
-                 rect1.setFill(Color.RED);
-                 FadeTransition ft = new FadeTransition(Duration.millis(3000), rect1);
-                 ft.setFromValue(1.0);
-                 ft.setToValue(0.1);
-                 ft.setCycleCount(Timeline.INDEFINITE);
-                 ft.setAutoReverse(true);
 
-                 Path path = new Path();
-                 path.getElements().add(new MoveTo(20,20));
-                 path.getElements().add(new CubicCurveTo(380, 0, 380, 120, 200, 120));
-                 path.getElements().add(new CubicCurveTo(0, 120, 0, 240, 380, 240));
-                 PathTransition pathTransition = new PathTransition();
-                 pathTransition.setDuration(Duration.millis(4000));
-                 pathTransition.setPath(path);
-                 pathTransition.setNode(rect1);
-                 pathTransition.setOrientation(PathTransition.OrientationType.ORTHOGONAL_TO_TANGENT);
-                 pathTransition.setCycleCount(Timeline.INDEFINITE);
-                 pathTransition.setAutoReverse(true);
-                 
-                 view.getChildren().add(rect1);
-                 ft.play();
-                 pathTransition.play();                 
+                 		Dimension size = new Dimension(320, 240);
+                 		webcam.setViewSize(size);
+                 		webcam.open();
+                 		imageView = new ImageView();
+                        view.getChildren().add(imageView);
+                        
+                        stopCamera = false;
+                		Task<Void> task = new Task<Void>() {
+
+                			@Override
+                			protected Void call() throws Exception {
+                				
+                				while (!stopCamera) {
+                					try {
+                						if ((grabbedImage = webcam.getImage()) != null) {
+                							Platform.runLater(new Runnable() {
+                								@Override
+                								public void run() {
+                									Image mainiamge = SwingFXUtils.toFXImage(grabbedImage, null);
+                									imageProperty.set(mainiamge);
+                								}
+                							});
+                							grabbedImage.flush();
+                						}
+                					} catch (Exception e) {
+                						e.printStackTrace();
+                					}
+                				}
+                				webcam.close();
+                				return null;
+                			}
+                		};
+
+                		Thread th = new Thread(task);
+                		th.setDaemon(true);
+                		th.start();
+                		imageView.imageProperty().bind(imageProperty);
+       
              }
          }));
 
+     taskbar.getChildren().add(createButton("/snapshoot.png", new Runnable() {
+
+         public void run() {
+        	stopCamera = true;
+      		webcam.close();
+       		Dimension size = new Dimension(640, 480);
+      		webcam.setViewSize(size);
+      		webcam.open();
+			grabbedImage = webcam.getImage();
+			Image mainiamge = SwingFXUtils.toFXImage(grabbedImage, null);
+     		imageView = new ImageView();
+			imageProperty.set(mainiamge);
+    		imageView.imageProperty().bind(imageProperty);
+      		webcam.close();
+            changeView(imageView);
+         }
+     }));
+     
      taskbar.getChildren().add(createButton("/icon-2.png", new Runnable() {
 
          public void run() {
@@ -113,27 +169,6 @@ public class TestJavaFX2 extends Application {
          }
      }));
 
-     taskbar.getChildren().add(createButton("/icon-3.png", new Runnable() {
-
-         public void run() {
-             Accordion accordion = new Accordion();
-             for (int i = 1; i <= 4; i++) {
-                 TitledPane t1 = new TitledPane("Image " + i,
-                         new ImageView(new Image(getClass().getResource("/icon-" + i + ".png").toString())));
-                 accordion.getPanes().add(t1);
-             }
-             changeView(accordion);
-         }
-     }));
-     
-     taskbar.getChildren().add(createButton("/icon-4.png", new Runnable() {
-         public void run() {
-             final WebView web = new WebView();
-             final WebEngine we = web.getEngine();
-             we.load("http://google.com");
-             changeView(web);
-         }
-     }));
 
      taskbar.getChildren().add(createButton("/icon-5.png", new Runnable() {
 
@@ -156,11 +191,11 @@ public class TestJavaFX2 extends Application {
 
 private void changeView(Node node) {
     view.getChildren().clear();
-//    mediaPlayer.stop();
+    stopCamera = true;
     view.getChildren().add(node);
 }
  
- private static final double SCALE = 1.3;
+ private static final double SCALE = 1.1;
  private static final double DURATION = 300;
 
  private Node createButton(String iconName, final Runnable action) {
@@ -192,5 +227,5 @@ private void changeView(Node node) {
          }
      });
      return node;
- } 
+ }
 }

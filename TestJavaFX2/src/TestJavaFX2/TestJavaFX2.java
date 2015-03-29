@@ -44,6 +44,7 @@ import java.awt.Dimension;
 //import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
+import java.awt.image.RenderedImage;
 //import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -74,7 +75,7 @@ public class TestJavaFX2 extends Application {
     
      stage.setTitle("OCR Test");
      stage.setWidth(800);
-     stage.setHeight(900);
+     stage.setHeight(700);
 
      BorderPane root = new BorderPane();
      Scene scene = new Scene(root, 720, 550, Color.LIGHTGRAY);
@@ -94,7 +95,7 @@ public class TestJavaFX2 extends Application {
          	 public void run() {
                  view.getChildren().clear(); // очищаем view
 
-                 		Dimension size = new Dimension(320, 240);
+                 		Dimension size = new Dimension(640, 480);
                  		webcam.setViewSize(size);
                  		webcam.open();
                  		imageView = new ImageView();
@@ -138,17 +139,17 @@ public class TestJavaFX2 extends Application {
      taskbar.getChildren().add(createButton("/snapshoot.png", new Runnable() {
 
          public void run() {
-        	stopCamera = true;
-      		webcam.close();
-       		Dimension size = new Dimension(640, 480);
-      		webcam.setViewSize(size);
-      		webcam.open();
+        	 
 			grabbedImage = webcam.getImage();
 			Image mainiamge = SwingFXUtils.toFXImage(grabbedImage, null);
+        	stopCamera = true;
      		imageView = new ImageView();
 			imageProperty.set(mainiamge);
     		imageView.imageProperty().bind(imageProperty);
-      		webcam.close();
+            try{
+                ImageIO.write((RenderedImage)grabbedImage, "jpg", new File("c:/24/lastp.jpg"));
+                } catch (IOException e) {};
+      		
             changeView(imageView);
          }
      }));

@@ -31,6 +31,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.CubicCurveTo;
+import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
 import javafx.scene.shape.Rectangle;
@@ -53,6 +54,10 @@ import java.util.concurrent.TimeoutException;
 import javax.imageio.ImageIO;
 
 import com.github.sarxos.webcam.Webcam;
+import com.jhlabs.image.ContrastFilter;
+import com.jhlabs.image.GammaFilter;
+import com.jhlabs.image.InvertFilter;
+import com.jhlabs.image.ThresholdFilter;
 
 public class TestJavaFX2 extends Application {
 
@@ -65,6 +70,7 @@ public class TestJavaFX2 extends Application {
  private BufferedImage grabbedImage;
  private Webcam webcam; 
  private ObjectProperty<Image> imageProperty = new SimpleObjectProperty<Image>();
+ private ObjectProperty<Image> fimageProperty = new SimpleObjectProperty<Image>();
  private ImageView imageView;
  private boolean stopCamera = false;
 
@@ -139,18 +145,73 @@ public class TestJavaFX2 extends Application {
      taskbar.getChildren().add(createButton("/snapshoot.png", new Runnable() {
 
          public void run() {
-        	 
+
+       	    view.getChildren().clear();
 			grabbedImage = webcam.getImage();
+			
+	        ContrastFilter contrast = new ContrastFilter();
+	        BufferedImage dest1=contrast.createCompatibleDestImage(grabbedImage,null);
+	        contrast.filter(grabbedImage, dest1);
+	        
+	        GammaFilter   gamma = new GammaFilter();
+	        BufferedImage dest2 = gamma.createCompatibleDestImage(dest1,null);
+	        gamma.setGamma(1.5f);
+	        gamma.filter(dest1, dest2);
+	        try{
+	        ImageIO.write((RenderedImage)dest2, "jpg", new File("c:/24/aaa2.jpg"));
+	        } catch (IOException e) {};
+	        
+	        ThresholdFilter threshold = new ThresholdFilter();
+	        BufferedImage dest3 = threshold.createCompatibleDestImage(dest2,null);
+	        threshold.filter(dest2, dest3);
+	        
+	        InvertFilter invert = new InvertFilter();
+	        BufferedImage dest4 = invert.createCompatibleDestImage(dest3,null);
+	        invert.filter(dest3, dest4);
+			
 			Image mainiamge = SwingFXUtils.toFXImage(grabbedImage, null);
+			Image finalimage = SwingFXUtils.toFXImage(dest4, null);
         	stopCamera = true;
      		imageView = new ImageView();
 			imageProperty.set(mainiamge);
     		imageView.imageProperty().bind(imageProperty);
+     		ImageView finalImage = new ImageView();
+			fimageProperty.set(finalimage);
+			finalImage.imageProperty().bind(fimageProperty);
             try{
                 ImageIO.write((RenderedImage)grabbedImage, "jpg", new File("c:/24/lastp.jpg"));
                 } catch (IOException e) {};
       		
-            changeView(imageView);
+           view.getChildren().add(imageView);
+           view.getChildren().add(finalImage);
+
+            Path path = new Path();
+            path.getElements().add(new MoveTo(200, 200));
+            path.getElements().add(new LineTo(150,150));
+            PathTransition pathTransition = new PathTransition();
+            pathTransition.setDuration(Duration.millis(4000));
+            pathTransition.setPath(path);
+            pathTransition.setNode(imageView);
+            pathTransition.play();
+            ScaleTransition shrink = new ScaleTransition(Duration.millis(3000), imageView);
+            shrink.setToX(0.5);
+            shrink.setToY(0.5);
+            shrink.play();
+            
+            Path path2 = new Path();
+            path2.getElements().add(new MoveTo(400, 200));
+            path2.getElements().add(new LineTo(500,150));
+            PathTransition pathTransition2 = new PathTransition();
+            pathTransition2.setDuration(Duration.millis(4000));
+            pathTransition2.setPath(path2);
+            pathTransition2.setNode(finalImage);
+            pathTransition2.play();                 
+            
+            
+            ScaleTransition shrink2 = new ScaleTransition(Duration.millis(3000), finalImage);
+            shrink2.setToX(0.5);
+            shrink2.setToY(0.5);
+            shrink2.play();
          }
      }));
      

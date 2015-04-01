@@ -1,15 +1,14 @@
 package TestJavaFX2;
 
-import javafx.animation.FadeTransition;
 import javafx.animation.PathTransition;
 import javafx.animation.ScaleTransition;
-import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
@@ -17,46 +16,36 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.chart.PieChart;
-import javafx.scene.control.Accordion;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
-import javafx.scene.control.TitledPane;
+import javafx.scene.control.Slider;
 import javafx.scene.effect.Reflection;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.CubicCurveTo;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
-import javafx.scene.web.WebEngine;
-import javafx.scene.web.WebView;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import javafx.util.Duration;
 
 import java.awt.Dimension;
-//import java.awt.Image;
-import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
-import java.awt.image.RenderedImage;
-//import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
-
-import javax.imageio.ImageIO;
+import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 import com.github.sarxos.webcam.Webcam;
 import com.jhlabs.image.ContrastFilter;
 import com.jhlabs.image.GammaFilter;
-import com.jhlabs.image.InvertFilter;
 import com.jhlabs.image.ThresholdFilter;
 
 public class TestJavaFX2 extends Application {
@@ -66,46 +55,108 @@ public class TestJavaFX2 extends Application {
  }
 
  private HBox taskbar;
- private StackPane view;
+ private AnchorPane view;
  private BufferedImage grabbedImage;
  private Webcam webcam; 
  private ObjectProperty<Image> imageProperty = new SimpleObjectProperty<Image>();
- private ObjectProperty<Image> fimageProperty = new SimpleObjectProperty<Image>();
+ private ObjectProperty<Image> imageGammaProperty = new SimpleObjectProperty<Image>();
  private ImageView imageView;
- private boolean stopCamera = false;
-
-// private MediaPlayer mediaPlayer;
+ private float gradientValue = 1.0f;
+ private ImageView imageGammaView;
+ private boolean stopCamera = true;
 
  @Override
  public void start(Stage stage) {
     
      stage.setTitle("OCR Test");
-     stage.setWidth(800);
-     stage.setHeight(700);
+     stage.setWidth(770);
+     stage.setHeight(730);
 
      BorderPane root = new BorderPane();
      Scene scene = new Scene(root, 720, 550, Color.LIGHTGRAY);
      stage.setScene(scene);
 
+     stage.setOnHiding(new EventHandler<WindowEvent>() {
+
+         @Override
+         public void handle(WindowEvent event) {
+             Platform.runLater(new Runnable() {
+
+                 @Override
+                 public void run() {
+                     if(!stopCamera){
+                    	 webcam.close();
+                     }
+                     System.exit(0);
+                 }
+             });
+         }
+     });
+     
      taskbar = new HBox(10);
      taskbar.setPadding(new Insets(15, 30, 50, 30));
      taskbar.setPrefHeight(150);
      taskbar.setAlignment(Pos.CENTER);
      root.setBottom(taskbar);
-     view = new StackPane();
+//     view = new StackPane();
+   view = new AnchorPane();
      root.setCenter(view);
      view.getChildren().add(new Text("Test OCR"));
 		webcam = Webcam.getDefault();
      
      taskbar.getChildren().add(createButton("/icon-1.png", new Runnable() {
          	 public void run() {
-                 view.getChildren().clear(); // очищаем view
-
-                 		Dimension size = new Dimension(640, 480);
+         		 		
+         		 		if(!stopCamera) return;
+         		 
+         		 		view.getChildren().clear();
+                 		Dimension size = new Dimension(320, 240);
                  		webcam.setViewSize(size);
                  		webcam.open();
                  		imageView = new ImageView();
                         view.getChildren().add(imageView);
+                        AnchorPane.setTopAnchor(imageView, 10.0);
+                        AnchorPane.setLeftAnchor(imageView, 50.0);
+                        
+                 		imageGammaView = new ImageView();
+                        view.getChildren().add(imageGammaView);
+                        AnchorPane.setTopAnchor(imageGammaView, 10.0);
+                        AnchorPane.setLeftAnchor(imageGammaView, 400.0);
+                        
+                        Slider slider = new Slider();
+                        slider.setMin(0);
+                        slider.setMax(2.0);
+                        slider.setValue(gradientValue);
+                        slider.setShowTickLabels(true);
+                        slider.setShowTickMarks(true);
+                        slider.setMajorTickUnit(1.0);
+                        slider.setMinorTickCount(1);
+                        slider.setBlockIncrement(0.1);
+                        view.getChildren().add(slider);
+                        AnchorPane.setTopAnchor(slider, 400.0);
+                        AnchorPane.setLeftAnchor(slider, 320.0);
+                        
+                        final Label GradientValueLabel = new Label(Double.toString(slider.getValue()));
+                        view.getChildren().add(GradientValueLabel);
+                        AnchorPane.setTopAnchor(GradientValueLabel, 380.0);
+                        AnchorPane.setLeftAnchor(GradientValueLabel, 340.0);
+                        
+                        
+                        slider.valueProperty().addListener(new ChangeListener<Number>() {
+                            public void changed(ObservableValue<? extends Number> ov,
+                                Number old_val, Number new_val) {
+                            		gradientValue = new_val.floatValue();
+                                    GradientValueLabel.setText(String.format("%.1f", new_val));
+                            }
+                        });
+                        
+/*                        Rectangle rect = new Rectangle(0, 0, 400, 100);
+                        rect.setOpacity(0.1);
+                        rect.setStroke(Color.WHITE);
+                        rect.setStrokeWidth(2);
+                        view.getChildren().add(rect);
+                        AnchorPane.setTopAnchor(rect, 160.0);
+                        AnchorPane.setLeftAnchor(rect, 200.0);*/
                         
                         stopCamera = false;
                 		Task<Void> task = new Task<Void>() {
@@ -120,10 +171,17 @@ public class TestJavaFX2 extends Application {
                 								@Override
                 								public void run() {
                 									Image mainiamge = SwingFXUtils.toFXImage(grabbedImage, null);
+                									Image imageGamma = SwingFXUtils.toFXImage(Filter(grabbedImage), null);
                 									imageProperty.set(mainiamge);
+                									imageGammaProperty.set(imageGamma);
                 								}
                 							});
                 							grabbedImage.flush();
+                							try {
+                							    TimeUnit.MILLISECONDS.sleep(700);
+                							} catch (InterruptedException e) {
+                							    //Handle exception
+                							}
                 						}
                 					} catch (Exception e) {
                 						e.printStackTrace();
@@ -137,7 +195,8 @@ public class TestJavaFX2 extends Application {
                 		Thread th = new Thread(task);
                 		th.setDaemon(true);
                 		th.start();
-                		imageView.imageProperty().bind(imageProperty);
+              		imageView.imageProperty().bind(imageProperty);
+              		imageGammaView.imageProperty().bind(imageGammaProperty);
        
              }
          }));
@@ -147,47 +206,70 @@ public class TestJavaFX2 extends Application {
          public void run() {
 
        	    view.getChildren().clear();
+
+       	    if(stopCamera)
+        	{
+       	    	Text t = new Text();
+      	    	t.setText("Pls start camera first.");
+      	    	t.setFont(new Font(26));
+                AnchorPane.setTopAnchor(t, 200.0);
+                AnchorPane.setLeftAnchor(t, 220.0);
+                view.getChildren().add(t);
+                return;
+        	}
+       	    
 			grabbedImage = webcam.getImage();
-			
+        	stopCamera = true;
+	/*		
 	        ContrastFilter contrast = new ContrastFilter();
 	        BufferedImage dest1=contrast.createCompatibleDestImage(grabbedImage,null);
 	        contrast.filter(grabbedImage, dest1);
 	        
 	        GammaFilter   gamma = new GammaFilter();
 	        BufferedImage dest2 = gamma.createCompatibleDestImage(dest1,null);
-	        gamma.setGamma(1.5f);
+	        gamma.setGamma(1.1f);
 	        gamma.filter(dest1, dest2);
-	        try{
-	        ImageIO.write((RenderedImage)dest2, "jpg", new File("c:/24/aaa2.jpg"));
-	        } catch (IOException e) {};
 	        
 	        ThresholdFilter threshold = new ThresholdFilter();
 	        BufferedImage dest3 = threshold.createCompatibleDestImage(dest2,null);
 	        threshold.filter(dest2, dest3);
-	        
-	        InvertFilter invert = new InvertFilter();
+
+	        */
+        	BufferedImage filteredimage = Filter(grabbedImage);
+/*	        InvertFilter invert = new InvertFilter();
 	        BufferedImage dest4 = invert.createCompatibleDestImage(dest3,null);
-	        invert.filter(dest3, dest4);
-			
+	        invert.filter(dest3, dest4);*/
+
+	        
 			Image mainiamge = SwingFXUtils.toFXImage(grabbedImage, null);
-			Image finalimage = SwingFXUtils.toFXImage(dest4, null);
-        	stopCamera = true;
-     		imageView = new ImageView();
-			imageProperty.set(mainiamge);
-    		imageView.imageProperty().bind(imageProperty);
-     		ImageView finalImage = new ImageView();
-			fimageProperty.set(finalimage);
-			finalImage.imageProperty().bind(fimageProperty);
-            try{
-                ImageIO.write((RenderedImage)grabbedImage, "jpg", new File("c:/24/lastp.jpg"));
-                } catch (IOException e) {};
-      		
-           view.getChildren().add(imageView);
-           view.getChildren().add(finalImage);
+			Image finalimage = SwingFXUtils.toFXImage(filteredimage, null);
+			
+	        WritableImage crop = new WritableImage(finalimage.getPixelReader(),150, 150, 50, 50);
+
+     		imageView = new ImageView(mainiamge);
+     		ImageView finalImage = new ImageView(finalimage);
+     		ImageView cropImage = new ImageView(crop);
+            view.getChildren().add(imageView);
+            view.getChildren().add(finalImage);
+            view.getChildren().add(cropImage);
+            AnchorPane.setBottomAnchor(cropImage, 100.0);
+            AnchorPane.setLeftAnchor(cropImage, 170.0);
+//            view.setAlignment(cropImage, Pos.BOTTOM_CENTER);
+            Ocr ocr = new Ocr();
+            ocr.loadTrainingImages();
+            String ocrstring = ocr.process(SwingFXUtils.fromFXImage(crop, null));
+            
+
+  	    	Text t = new Text();
+  	    	t.setText("OCR result: " + ocrstring);
+  	    	t.setFont(new Font(30));
+            view.getChildren().add(t);
+            AnchorPane.setBottomAnchor(t, 20.0);
+            AnchorPane.setLeftAnchor(t, 250.0);
 
             Path path = new Path();
-            path.getElements().add(new MoveTo(200, 200));
-            path.getElements().add(new LineTo(150,150));
+            path.getElements().add(new MoveTo(340, 250));
+            path.getElements().add(new LineTo(200,150));
             PathTransition pathTransition = new PathTransition();
             pathTransition.setDuration(Duration.millis(4000));
             pathTransition.setPath(path);
@@ -199,8 +281,8 @@ public class TestJavaFX2 extends Application {
             shrink.play();
             
             Path path2 = new Path();
-            path2.getElements().add(new MoveTo(400, 200));
-            path2.getElements().add(new LineTo(500,150));
+            path2.getElements().add(new MoveTo(340, 250));
+            path2.getElements().add(new LineTo(550,150));
             PathTransition pathTransition2 = new PathTransition();
             pathTransition2.setDuration(Duration.millis(4000));
             pathTransition2.setPath(path2);
@@ -214,7 +296,7 @@ public class TestJavaFX2 extends Application {
             shrink2.play();
          }
      }));
-     
+/*     
      taskbar.getChildren().add(createButton("/icon-2.png", new Runnable() {
 
          public void run() {
@@ -231,8 +313,8 @@ public class TestJavaFX2 extends Application {
          }
      }));
 
-
-     taskbar.getChildren().add(createButton("/icon-5.png", new Runnable() {
+*/
+     taskbar.getChildren().add(createButton("/icon-3.png", new Runnable() {
 
          public void run() {
              ListView<String> listView = new ListView<String>();
@@ -290,4 +372,23 @@ private void changeView(Node node) {
      });
      return node;
  }
+ 
+ private BufferedImage Filter(BufferedImage imagein) {
+
+     ContrastFilter contrast = new ContrastFilter();
+     BufferedImage contrastimage=contrast.createCompatibleDestImage(imagein,null);
+     contrast.filter(imagein, contrastimage);
+     
+     GammaFilter   gamma = new GammaFilter();
+     BufferedImage gammaimage = gamma.createCompatibleDestImage(contrastimage,null);
+     gamma.setGamma(gradientValue);
+     gamma.filter(contrastimage, gammaimage);
+     
+     ThresholdFilter threshold = new ThresholdFilter();
+     BufferedImage filteredimage = threshold.createCompatibleDestImage(gammaimage,null);
+     threshold.filter(gammaimage, filteredimage);
+     return filteredimage;
+ }
+ 
+ 
 }

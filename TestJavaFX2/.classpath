@@ -3,6 +3,10 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="Resources"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/webcam-capture-master"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/Filters"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/OCR"/>
+	<classpathentry kind="lib" path="C:/JavaLibs/webcam-capture-0.3.11-20150219.205650-6.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/Bridg 0.7"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/slf4j"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

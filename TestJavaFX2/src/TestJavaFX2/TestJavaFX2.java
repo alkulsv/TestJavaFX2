@@ -36,11 +36,12 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import javafx.util.Duration;
-
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
-import java.util.concurrent.TimeUnit;
-
+import java.awt.image.RenderedImage;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
 import com.github.sarxos.webcam.Webcam;
 import com.jhlabs.image.ContrastFilter;
 import com.jhlabs.image.GammaFilter;
@@ -64,7 +65,7 @@ public class TestJavaFX2 extends Application {
  private ImageView imageView, imageFontView;
  private float gradientValue = 1.0f;
  private ImageView imageGammaView;
- private boolean stopCamera = true;
+ private boolean stopCamera = true, stopCadr = true;
  final private Ocr ocr = new Ocr();
  GrayscaleFilter  gsfilter = new GrayscaleFilter ();
  ContrastFilter contrast = new ContrastFilter();
@@ -135,7 +136,7 @@ public class TestJavaFX2 extends Application {
 
                  		imageFontView = new ImageView("/font.jpg");
                         view.getChildren().add(imageFontView);
-                        AnchorPane.setTopAnchor(imageFontView, 570.0);
+                        AnchorPane.setTopAnchor(imageFontView, 580.0);
                         AnchorPane.setLeftAnchor(imageFontView, 300.0);
 
                         
@@ -150,12 +151,12 @@ public class TestJavaFX2 extends Application {
                         slider.setBlockIncrement(0.1);
                         view.getChildren().add(slider);
                         AnchorPane.setTopAnchor(slider, 520.0);
-                        AnchorPane.setLeftAnchor(slider, 410.0);
+                        AnchorPane.setLeftAnchor(slider, 540.0);
                         
                         final Label GradientValueLabel = new Label(Double.toString(slider.getValue()));
                         view.getChildren().add(GradientValueLabel);
                         AnchorPane.setTopAnchor(GradientValueLabel, 500.0);
-                        AnchorPane.setLeftAnchor(GradientValueLabel, 470.0);
+                        AnchorPane.setLeftAnchor(GradientValueLabel, 600.0);
                         
                         
                         slider.valueProperty().addListener(new ChangeListener<Number>() {
@@ -166,56 +167,74 @@ public class TestJavaFX2 extends Application {
                             }
                         });
                         
-                        Rectangle rect = new Rectangle(0, 0, 320, 55);
+                        Rectangle rect = new Rectangle(0, 0, 420, 70);
                         rect.setOpacity(0.1);
                         rect.setStroke(Color.WHITE);
                         rect.setStrokeWidth(2);
                         view.getChildren().add(rect);
-                        AnchorPane.setTopAnchor(rect, 223.0);
-                        AnchorPane.setLeftAnchor(rect, 210.0);
+                        AnchorPane.setTopAnchor(rect, 215.0);
+                        AnchorPane.setLeftAnchor(rect, 160.0);
 
               	    	final Text ocrresult = new Text();
               	    	ocrresult.setText("OCR result: ");
-              	    	ocrresult.setFont(new Font(20));
+              	    	ocrresult.setFont(new Font(16));
                         view.getChildren().add(ocrresult);
-                        AnchorPane.setTopAnchor(ocrresult, 570.0);
+                        AnchorPane.setTopAnchor(ocrresult, 590.0);
                         AnchorPane.setLeftAnchor(ocrresult, 50.0);
+
+                        ImageView savebutton = new ImageView(new Image(getClass().getResource("/disketa.jpg").toString()));
+                        view.getChildren().add(savebutton);
+                        AnchorPane.setTopAnchor(savebutton, 510.0);
+                        AnchorPane.setLeftAnchor(savebutton, 480.0);
+                        savebutton.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                            public void handle(MouseEvent event) {
+                                String filepath = getClass().getClassLoader().getResource("").getPath().toString()+ System.currentTimeMillis() + ".jpg";
+                            	ocrresult.setText("try to save " + filepath);
+                                try{
+                                    ImageIO.write((RenderedImage)grabbedImage.getSubimage(110, 205, 420, 70), "jpg", new File(filepath));
+//                                    ImageIO.write((RenderedImage)cutimage, "jpg", new File(filepath));
+                                    } catch (IOException e) {ocrresult.setText("Can't save file " + filepath);};
+                            	ocrresult.setText("File " + filepath + " saved...");
+                            }
+                        });
                         
-                        
-                        stopCamera = false;
+                        stopCamera = false; stopCadr = false;
                 		Task<Void> task = new Task<Void>() {
 
                 			@Override
                 			protected Void call() throws Exception {
-                				
-                				while (!stopCamera) {
-                					try {
+
+                 				while (!stopCamera) {
+                    					try {if(!stopCadr){
                 						if ((grabbedImage = webcam.getImage()) != null) {
+                							stopCadr = true;
                 							Platform.runLater(new Runnable() {
                 								@Override
                 								public void run() {
-                									cutimage = Filter(grabbedImage.getSubimage(160, 213, 320, 55));
+                									
+                									cutimage = Filter(grabbedImage.getSubimage(110, 205, 420, 70));
                 									imageProperty.set(SwingFXUtils.toFXImage(grabbedImage, null));
                 									imageGammaProperty.set(SwingFXUtils.toFXImage(cutimage, null));
                 			              	    	ocrresult.setText("OCR result: " + ocr.process(cutimage));
+                        							stopCadr = false;
                 								}
                 							});
                 							grabbedImage.flush();
-                							try {
-                							    TimeUnit.MILLISECONDS.sleep(100);
-                							} catch (InterruptedException e) {
-                							    //Handle exception
-                							}
-                						}
+                				            try {
+                			                     Thread.sleep(100);
+                			                 } catch (InterruptedException interrupted) {}
+                						}}
                 					} catch (Exception e) {
                 						e.printStackTrace();
                 					}
                 				}
+                   				
                 				webcam.close();
                 				return null;
                 			}
                 		};
 
+                		
                 		Thread th = new Thread(task);
                 		th.setDaemon(true);
                 		th.start();
@@ -380,6 +399,7 @@ private void changeView(Node node) {
 
 //     MedianFilter nsfilter = new MedianFilter();
      BufferedImage medianfilter = nsfilter.createCompatibleDestImage(gammaimage,null);
+//     nsfilter.filter(gammaimage, medianfilter);
      nsfilter.filter(invertfilter, medianfilter);
      nsfilter.filter(medianfilter, invertfilter);
      nsfilter.filter(invertfilter, medianfilter);

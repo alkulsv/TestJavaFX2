@@ -31,6 +31,14 @@ public class Ocr
             TrainingImageLoader loader = new TrainingImageLoader();
             HashMap<Character, ArrayList<TrainingImage>> trainingImageMap = new HashMap<Character, ArrayList<TrainingImage>>();
             loader.load(
+            		this.getClass().getClassLoader().getResource("font2.jpg").getFile(),
+            		new CharacterRange('0', '9'),
+            		trainingImageMap);
+            loader.load(
+            		this.getClass().getClassLoader().getResource("font3.jpg").getFile(),
+            		new CharacterRange('0', '9'),
+            		trainingImageMap);
+            loader.load(
             		this.getClass().getClassLoader().getResource("font.jpg").getFile(),
             		new CharacterRange('0', '9'),
             		trainingImageMap);
